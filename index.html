@@ -36,34 +36,29 @@
     
     <div id="dashboard" class="tab-content active">
         <h1>Dashboard</h1>
-        
-        <div class="chart-container">
-            <div class="card" style="flex: 1; min-width: 300px;">
-                <h3>💰 Today's Financial Overview</h3>
-                <div style="height: 250px;"><canvas id="summaryPieChart"></canvas></div>
-            </div>
-            <div class="card" style="flex: 2; min-width: 400px;">
-                <h3>📈 Profit Trend (Last 7 Days)</h3>
-                <div style="height: 250px;"><canvas id="profitChart"></canvas></div>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-            <div class="card" style="flex: 1; text-align: center;">
-                <h3>Today's Total Profit</h3>
-                <h2 id="day-total-display" style="color: #27ae60;">KES 0.00</h2>
-            </div>
-            <div class="card" style="flex: 1; background: #fff8e1; border-left: 5px solid #ffc107; text-align: center;">
-                <h3>🏆 Top Item (All Time)</h3>
-                <h2 id="top-item-display" style="color: #ff9800;">---</h2>
-                <p id="top-item-stats" style="font-size: 0.8em; color: #666;">Calculating...</p>
-            </div>
-        </div>
-
+		<div class="card" style="flex: 1;">
+    <h3>💰 Financial Overview</h3>
+    <div style="height: 300px;">
+        <canvas id="summaryPieChart"></canvas>
+    </div>
+</div>
         <div class="card">
             <h3>Recent Sales & Profit History</h3>
             <div id="history-table">Loading records...</div>
         </div>
+		<div style="display: flex; gap: 20px; margin-bottom: 20px;">
+    <div class="card" style="flex: 2;"><canvas id="profitChart" height="200"></canvas></div>
+    <div class="card" style="flex: 1;">
+        <h3>Today's Total Profit</h3>
+        <h2 id="day-total-display" style="color: #27ae60;">KES 0.00</h2>
+    </div>
+	<div class="card" style="flex: 1; background: #fff8e1; border-left: 5px solid #ffc107;">
+    <h3>🏆 Top Item (All Time)</h3>
+    <h2 id="top-item-display" style="color: #ff9800;">---</h2>
+    <p id="top-item-stats" style="font-size: 0.8em; color: #666;">Calculating...</p>
+</div>
+
+</div>
     </div>
 
     <div id="transactions" class="tab-content">
