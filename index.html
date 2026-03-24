@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business ERP - Inventory & Profit</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f4f4f9; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { color: #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:hover { background: #218838; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .profit { font-weight: bold; color: green; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📦 Daily Inventory Entry</h2>
+    <div class="form-group">
+        <label>Item</label>
+        <select id="item">
+            <option value="EGGS">EGGS</option>
+            <option value="SMOKY">SMOKY</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Quantity Sold</label>
+        <input type="number" id="qty_sold" placeholder="0">
+    </div>
+    <div class="form-group">
+        <label>MPESA Received</label>
+        <input type="number" id="mpesa" placeholder="0.00">
+    </div>
+    <div class="form-group">
+        <label>Cash Collected</label>
+        <input type="number" id="cash" placeholder="0.00">
+    </div>
+    <button onclick="saveData()">Save to Cloud</button>
+
+    <hr>
+
+    <h2>📊 Recent Sales</h2>
+    <div id="data-table">Loading records...</div>
+</div>
+
+<script>
+    // INITIALIZE SUPABASE
+    const SUPABASE_URL = 'https://wnlqacxktltvqrcworoq.supabase.co'; 
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubHFhY3hrdGx0dnFyY3dvcm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzMzMzIsImV4cCI6MjA4OTk0OTMzMn0.e2cnyFTBpcxwl4onnBcECSib9pUB4UuEhZ-D7TDG_9A';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function saveData() {
+        const item = document.getElementById('item').value;
+        const qty_sold = document.getElementById('qty_sold').value;
+        const mpesa = document.getElementById('mpesa').value;
+        const cash = document.getElementById('cash').value;
+
+        const { data, error } = await supabase
+            .from('daily_records')
+            .insert([{ 
+                product_name: item, 
+                qty_sold: parseInt(qty_sold), 
+                mpesa_received: parseFloat(mpesa), 
+                cash_received: parseFloat(cash) 
+            }]);
+
+        if (error) alert("Error: " + error.message);
+        else {
+            alert("Data Saved!");
+            fetchData(); // Refresh table
+        }
+    }
+
+    async function fetchData() {
+        let { data: records, error } = await supabase
+            .from('daily_records')
+            .select('*')
+            .order('date', { ascending: false });
+
+        if (error) {
+            console.log("error", error);
+            return;
+        }
+
+        let html = '<table><tr><th>Date</th><th>Item</th><th>Sold</th><th>Income</th></tr>';
+        records.forEach(row => {
+            // Simple calculation: Eggs @ 30, Smokies @ 40
+            let price = (row.product_name === 'EGGS') ? 30 : 40;
+            let income = row.qty_sold * price;
+            html += `<tr>
+                <td>${row.date}</td>
+                <td>${row.product_name}</td>
+                <td>${row.qty_sold}</td>
+                <td class="profit">KES ${income}</td>
+            </tr>`;
+        });
+        html += '</table>';
+        document.getElementById('data-table').innerHTML = html;
+    }
+
+    fetchData();
+</script>
+
+</body>
+</html>
