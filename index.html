@@ -134,7 +134,8 @@
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubHFhY3hrdGx0dnFyY3dvcm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzMzMzIsImV4cCI6MjA4OTk0OTMzMn0.e2cnyFTBpcxwl4onnBcECSib9pUB4UuEhZ-D7TDG_9A';
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
 
-    let currentConfig = {};
+    let globalLabour = 350; // This will hold the value from the database
+	let currentConfig = {};
 
     // 1. Tab Navigation
     function showTab(tabId) {
@@ -150,8 +151,13 @@
     async function loadConfig() {
         const { data } = await _supabase.from('inventory_settings').select('*');
         if (data && data.length > 0) {
+		let dropdownHtml = "";
+        let settingsHtml = "<table><tr><th>Product</th><th>B.P</th><th>S.P</th><th>Action</th></tr>";
             data.forEach(item => {
                 currentConfig[item.id] = item;
+				globalLabour = item.labour_cost || 350;
+				dropdownHtml += `<option value="${item.id}">${item.id}</option>`;
+            settingsHtml += `<tr><td>${item.id}</td><td>${item.buying_price}</td><td>${item.selling_price}</td><td><button onclick="deleteProduct('${item.id}')" style="background:red; color:white; border:none; cursor:pointer;">Remove</button></td></tr>`;
                 if(item.id === 'EGGS') {
                     document.getElementById('egg_bp').value = item.buying_price;
                     document.getElementById('egg_sp').value = item.selling_price;
@@ -167,6 +173,10 @@
                 EGGS: { buying_price: 16, selling_price: 30, labour_cost: 350 },
                 SMOKY: { buying_price: 27, selling_price: 40, labour_cost: 350 }
             };
+			document.getElementById('labour_cost').value = globalLabour; 
+
+        document.getElementById('trans_item').innerHTML = dropdownHtml;
+        document.getElementById('product-settings-list').innerHTML = settingsHtml + "</table>";
         }
     }
 
