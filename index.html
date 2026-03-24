@@ -436,30 +436,21 @@ async function addNewProduct() {
 
 // Updated loadConfig to refresh the Dropdown Menu in Daily Entry
 async function loadConfig() {
-    const { data } = await _supabase.from('inventory_settings').select('*');
-    if (data) {
-        let dropdownHtml = "";
-        let settingsHtml = "<table><tr><th>Product</th><th>B.P</th><th>S.P</th><th>Action</th></tr>";
-
-        data.forEach(item => {
-            currentConfig[item.id] = item;
-            
-            // Add to the Daily Entry Dropdown
-            dropdownHtml += `<option value="${item.id}">${item.id}</option>`;
-            
-            // Add to the Settings List
-            settingsHtml += `<tr>
-                <td>${item.id}</td>
-                <td>${item.buying_price}</td>
-                <td>${item.selling_price}</td>
-                <td><button onclick="deleteProduct('${item.id}')" style="background:red; color:white; border:none; cursor:pointer;">Remove</button></td>
-            </tr>`;
-        });
-
-        document.getElementById('trans_item').innerHTML = dropdownHtml;
-        document.getElementById('product-settings-list').innerHTML = settingsHtml + "</table>";
+        const { data } = await _supabase.from('inventory_settings').select('*');
+        if (data && data.length > 0) {
+            let dropdownHtml = "";
+            let settingsHtml = "<table><tr><th>Product</th><th>B.P</th><th>S.P</th><th>Action</th></tr>";
+            data.forEach(item => {
+                currentConfig[item.id] = item;
+                globalLabour = item.labour_cost || 350; // Pick labour from any existing row
+                dropdownHtml += `<option value="${item.id}">${item.id}</option>`;
+                settingsHtml += `<tr><td>${item.id}</td><td>${item.buying_price}</td><td>${item.selling_price}</td><td><button onclick="deleteProduct('${item.id}')" style="background:#e74c3c; color:white; border:none; padding:5px; border-radius:3px; cursor:pointer;">Remove</button></td></tr>`;
+            });
+            document.getElementById('labour_cost').value = globalLabour;
+            document.getElementById('trans_item').innerHTML = dropdownHtml;
+            document.getElementById('product-settings-list').innerHTML = settingsHtml + "</table>";
+        }
     }
-}
 
 	async function deleteProduct(productId) {
 		if (confirm(`Delete ${productId}? This won't delete past sales, but you won't be able to select it for new entries.`)) {
