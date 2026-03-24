@@ -134,7 +134,9 @@
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubHFhY3hrdGx0dnFyY3dvcm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzMzMzIsImV4cCI6MjA4OTk0OTMzMn0.e2cnyFTBpcxwl4onnBcECSib9pUB4UuEhZ-D7TDG_9A';
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
 
-    let currentConfig = {};
+    let globalLabour = 350; // Add this line
+	let currentConfig = {};
+
 
     // 1. Tab Navigation
     function showTab(tabId) {
@@ -273,61 +275,47 @@
 }
 	
 	async function loadAnalytics() {
-    const { data, error } = await _supabase
-        .from('daily_records')
-        .select('*')
-        .order('created_at', { ascending: true });
+    const { data, error } = await _supabase.from('daily_records').select('*').order('created_at', { ascending: true });
+    if (!data) return;
 
-    if (data) {
-        let todayProfit = 0;
-        let todayExpenses = 0;
-        let previousProfit = 0;
+    let todayProfit = 0;
+    let todayExpenses = 0;
+    let previousProfit = 0;
+    const todayStr = new Date().toLocaleDateString();
+    const dailyTotals = {};
+    const itemProfits = {};
 
-        const dailyTotals = {};
-	data.forEach(r => {
-		const day = new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-		if (!dailyTotals[day]) dailyTotals[day] = 0;
-		dailyTotals[day] += parseFloat(r.profit_made || 0);
-	});
+    data.forEach(r => {
+        // 1. Line Chart Data
+        const day = new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        dailyTotals[day] = (dailyTotals[day] || 0) + parseFloat(r.profit_made || 0);
 
-	// Then call the render function:
-	renderChart(Object.keys(dailyTotals), Object.values(dailyTotals));
+        // 2. Top Item Data
+        itemProfits[r.product_name] = (itemProfits[r.product_name] || 0) + parseFloat(r.profit_made || 0);
 
-	// Also update the "Today's Total" display:
-	const todayKey = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-	document.getElementById('day-total-display').innerText = `KES ${(dailyTotals[todayKey] || 0).toFixed(2)}`;
-		const todayStr = new Date().toLocaleDateString();
+        // 3. Pie Chart Data
+        const recordDate = new Date(r.created_at).toLocaleDateString();
+        const config = currentConfig[r.product_name] || { buying_price: 0, labour_cost: 350 };
+        const itemExp = (r.qty_sold * config.buying_price) + parseFloat(r.expenses || 0) + parseFloat(config.labour_cost || 350);
 
-        data.forEach(record => {
-            const recordDate = new Date(record.created_at).toLocaleDateString();
-            const profit = parseFloat(record.profit_made || 0);
-            
-            // To get accurate expenses, we look at the config for that item
-            const config = currentConfig[record.product_name];
-            const itemExpenses = (record.qty_sold * config.buying_price) + parseFloat(record.expenses) + parseFloat(config.labour_cost);
+        if (recordDate === todayStr) {
+            todayProfit += parseFloat(r.profit_made);
+            todayExpenses += itemExp;
+        } else {
+            previousProfit += parseFloat(r.profit_made);
+        }
+    });
 
-            if (recordDate === todayStr) {
-                todayProfit += profit;
-                todayExpenses += itemExpenses;
-            } else {
-                previousProfit += profit;
-            }
-			const itemProfits = {};
-			data.forEach(r => {
-				itemProfits[r.product_name] = (itemProfits[r.product_name] || 0) + parseFloat(r.profit_made);
-			});
+    // Update UI
+    renderChart(Object.keys(dailyTotals), Object.values(dailyTotals));
+    renderSummaryPie(todayExpenses, todayProfit, previousProfit);
+    
+    const todayKey = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    document.getElementById('day-total-display').innerText = `KES ${(dailyTotals[todayKey] || 0).toFixed(2)}`;
 
-			let topItem = Object.keys(itemProfits).reduce((a, b) => itemProfits[a] > itemProfits[b] ? a : b, "---");
-			document.getElementById('top-item-display').innerText = topItem;
-			document.getElementById('top-item-stats').innerText = `Profit: KES ${itemProfits[topItem]?.toFixed(2) || 0}`;
-        });
-
-        // 1. Update the Pie Chart
-        renderSummaryPie(todayExpenses, todayProfit, previousProfit);
-
-        // 2. Update your other Dashboard elements (Line chart, etc.)
-        // (Keep your existing line chart and top-performer logic here)
-    }
+    let topItem = Object.keys(itemProfits).reduce((a, b) => itemProfits[a] > itemProfits[b] ? a : b, "---");
+    document.getElementById('top-item-display').innerText = topItem;
+    document.getElementById('top-item-stats').innerText = `Profit: KES ${itemProfits[topItem]?.toFixed(2) || 0}`;
 }
 
 	let myChart = null;
@@ -366,19 +354,14 @@
 }
 
 	function editRecord(id, name, sold, exp, bought) {
-		// 1. Switch to the entry tab
-		showTab('transactions');
-		
-		// 2. Fill the form with the old data
-		document.getElementById('edit_id').value = id;
-		document.getElementById('trans_item').value = name;
-		document.getElementById('qty_sold').value = qty;
-		document.getElementById('qty_bought').value = bought;
-		document.getElementById('daily_exp').value = exp;
-		
-		// 3. Change button text to show we are editing
-		document.querySelector('.save-btn').innerText = "Update Record";
-		calcPreview(); // Refresh the preview box
+    showTab('transactions');
+    document.getElementById('edit_id').value = id;
+    document.getElementById('trans_item').value = name;
+    document.getElementById('qty_sold').value = sold; // Changed from 'qty' to 'sold'
+    document.getElementById('qty_bought').value = bought;
+    document.getElementById('daily_exp').value = exp;
+    document.querySelector('.save-btn').innerText = "Update Record";
+    calcPreview();
 }
 
 let summaryPie = null;
