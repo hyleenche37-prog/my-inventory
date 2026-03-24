@@ -211,34 +211,40 @@
     const editId = document.getElementById('edit_id').value;
     const item = document.getElementById('trans_item').value;
     const sold = parseInt(document.getElementById('qty_sold').value) || 0;
+    const bought = parseInt(document.getElementById('qty_bought').value) || 0;
     const exp = parseFloat(document.getElementById('daily_exp').value) || 0;
-    const config = currentConfig[item];
     
-    const profit = (sold * config.selling_price) - (sold * config.buying_price) - exp - config.labour_cost;
+    const config = currentConfig[item];
+    if (!config) return alert("Error: Product configuration not found.");
+
+    // Use the globalLabour variable loaded from your settings
+    const profit = (sold * config.selling_price) - (sold * config.buying_price) - exp - globalLabour;
 
     const recordData = {
         product_name: item,
         qty_sold: sold,
+        qty_bought: bought,
         expenses: exp,
         profit_made: profit
     };
 
-    let response;
+    let result;
     if (editId) {
-        // UPDATE existing
-        response = await _supabase.from('daily_records').update(recordData).eq('id', editId);
+        // This is an EDIT: Update the existing record where the ID matches
+        result = await _supabase.from('daily_records').update(recordData).eq('id', editId);
     } else {
-        // INSERT new
-        response = await _supabase.from('daily_records').insert([recordData]);
+        // This is NEW: Insert a fresh record and let Supabase create a new ID
+        result = await _supabase.from('daily_records').insert([recordData]);
     }
 
-    if(!response.error) {
-        alert(editId ? "Updated!" : "Saved!");
-        // Reset form
-        document.getElementById('edit_id').value = "";
-        document.getElementById('qty_sold').value = 0;
-        document.querySelector('.save-btn').innerText = "Save Daily Record";
+    if (!result.error) {
+        alert(editId ? "Record Updated!" : "Record Saved!");
+        resetForm(); // Clears the ID and resets the button text
         loadHistory();
+        loadAnalytics();
+    } else {
+        console.error("Supabase Error:", result.error);
+        alert("Save failed: " + result.error.message);
     }
 }
 
