@@ -149,36 +149,28 @@
 
     // 2. Load Settings from Cloud
     async function loadConfig() {
-        const { data } = await _supabase.from('inventory_settings').select('*');
-        if (data && data.length > 0) {
-		let dropdownHtml = "";
+    const { data } = await _supabase.from('inventory_settings').select('*');
+    if (data && data.length > 0) {
+        let dropdownHtml = "";
         let settingsHtml = "<table><tr><th>Product</th><th>B.P</th><th>S.P</th><th>Action</th></tr>";
-            data.forEach(item => {
-                currentConfig[item.id] = item;
-				globalLabour = item.labour_cost || 350;
-				dropdownHtml += `<option value="${item.id}">${item.id}</option>`;
+
+        data.forEach(item => {
+            currentConfig[item.id] = item;
+            
+            // FIX: This ensures the global labour is loaded from the DB
+            globalLabour = item.labour_cost || 350; 
+
+            dropdownHtml += `<option value="${item.id}">${item.id}</option>`;
             settingsHtml += `<tr><td>${item.id}</td><td>${item.buying_price}</td><td>${item.selling_price}</td><td><button onclick="deleteProduct('${item.id}')" style="background:red; color:white; border:none; cursor:pointer;">Remove</button></td></tr>`;
-                if(item.id === 'EGGS') {
-                    document.getElementById('egg_bp').value = item.buying_price;
-                    document.getElementById('egg_sp').value = item.selling_price;
-                } else if(item.id === 'SMOKY') {
-                    document.getElementById('smoky_bp').value = item.buying_price;
-                    document.getElementById('smoky_sp').value = item.selling_price;
-                }
-                document.getElementById('labour_cost').value = item.labour_cost;
-            });
-        } else {
-            // Default if DB is empty
-            currentConfig = {
-                EGGS: { buying_price: 16, selling_price: 30, labour_cost: 350 },
-                SMOKY: { buying_price: 27, selling_price: 40, labour_cost: 350 }
-            };
-			document.getElementById('labour_cost').value = globalLabour; 
+        });
+
+        // FIX: This puts the saved labour back into the input box on refresh
+        document.getElementById('labour_cost').value = globalLabour; 
 
         document.getElementById('trans_item').innerHTML = dropdownHtml;
         document.getElementById('product-settings-list').innerHTML = settingsHtml + "</table>";
-        }
     }
+}
 
     // 3. Save Settings to Cloud
     async function updateSettings() {
@@ -215,40 +207,21 @@
     }
 
     // 5. Save Daily Transaction
-    async function saveTransaction() {
+  async function saveTransaction() {
     const editId = document.getElementById('edit_id').value;
     const item = document.getElementById('trans_item').value;
     const sold = parseInt(document.getElementById('qty_sold').value) || 0;
     const exp = parseFloat(document.getElementById('daily_exp').value) || 0;
-    const config = currentConfig[item];
     
-    const profit = (sold * config.selling_price) - (sold * config.buying_price) - exp - config.labour_cost;
-
-    const recordData = {
-        product_name: item,
-        qty_sold: sold,
-        expenses: exp,
-        profit_made: profit
-    };
-
-    let response;
-    if (editId) {
-        // UPDATE existing
-        response = await _supabase.from('daily_records').update(recordData).eq('id', editId);
-    } else {
-        // INSERT new
-        response = await _supabase.from('daily_records').insert([recordData]);
+    // Check if config exists for this item
+    const config = currentConfig[item];
+    if (!config) {
+        alert("Please set prices in Settings first!");
+        return;
     }
-
-    if(!response.error) {
-        alert(editId ? "Updated!" : "Saved!");
-        // Reset form
-        document.getElementById('edit_id').value = "";
-        document.getElementById('qty_sold').value = 0;
-        document.querySelector('.save-btn').innerText = "Save Daily Record";
-        loadHistory();
-    }
-}
+    
+    // CALCULATE PROFIT USING SAVED LABOUR
+    const profit = (sold * config.selling_price) - (sold * config.buying_price) - exp - globalLabour;
 
     // 6. Load Table Data
     async function loadHistory() {
@@ -477,6 +450,27 @@ async function loadConfig() {
 			if (!error) loadConfig();
 		}
 	}
+
+async function updateLabour() {
+    const newLab = document.getElementById('labour_cost').value;
+    const products = Object.keys(currentConfig);
+    
+    if(products.length === 0) {
+        alert("Add a product (like EGGS) first before setting labour!");
+        return;
+    }
+    
+    // Update the local variable
+    globalLabour = parseFloat(newLab);
+
+    // Update the database for all products
+    for(let p of products) {
+        await _supabase.from('inventory_settings').update({ labour_cost: globalLabour }).eq('id', p);
+    }
+    
+    alert("Labour Cost saved to database!");
+    loadConfig(); 
+}
 
     // Initialize the App
     window.onload = async () => {
