@@ -147,31 +147,6 @@
     }
   }
 
-    // 2. Load Settings from Cloud
-    async function loadConfig() {
-    const { data } = await _supabase.from('inventory_settings').select('*');
-    if (data && data.length > 0) {
-        let dropdownHtml = "";
-        let settingsHtml = "<table><tr><th>Product</th><th>B.P</th><th>S.P</th><th>Action</th></tr>";
-
-        data.forEach(item => {
-            currentConfig[item.id] = item;
-            
-            // FIX: This ensures the global labour is loaded from the DB
-            globalLabour = item.labour_cost || 350; 
-
-            dropdownHtml += `<option value="${item.id}">${item.id}</option>`;
-            settingsHtml += `<tr><td>${item.id}</td><td>${item.buying_price}</td><td>${item.selling_price}</td><td><button onclick="deleteProduct('${item.id}')" style="background:red; color:white; border:none; cursor:pointer;">Remove</button></td></tr>`;
-        });
-
-        // FIX: This puts the saved labour back into the input box on refresh
-        document.getElementById('labour_cost').value = globalLabour; 
-
-        document.getElementById('trans_item').innerHTML = dropdownHtml;
-        document.getElementById('product-settings-list').innerHTML = settingsHtml + "</table>";
-    }
-}
-
     // 3. Save Settings to Cloud
     async function updateSettings() {
         const lab = document.getElementById('labour_cost').value;
@@ -194,6 +169,7 @@
         const exp = parseFloat(document.getElementById('daily_exp').value) || 0;
         
         const config = currentConfig[item];
+		if (!config) return;
         const totalSales = sold * config.selling_price;
         const totalCost = (sold * config.buying_price) + exp + parseFloat(config.labour_cost);
         const profit = totalSales - totalCost;
@@ -212,46 +188,45 @@
     const item = document.getElementById('trans_item').value;
     const sold = parseInt(document.getElementById('qty_sold').value) || 0;
     const exp = parseFloat(document.getElementById('daily_exp').value) || 0;
-    
-    // Check if config exists for this item
+    const bought = parseInt(document.getElementById('qty_bought').value) || 0;
+
     const config = currentConfig[item];
     if (!config) {
         alert("Please set prices in Settings first!");
         return;
     }
-    
-    // CALCULATE PROFIT USING SAVED LABOUR
+
     const profit = (sold * config.selling_price) - (sold * config.buying_price) - exp - globalLabour;
 
-    // 6. Load Table Data
-    async function loadHistory() {
-    const { data } = await _supabase.from('daily_records').select('*').order('created_at', {ascending: false});
-    if(data) {
-        // Locate the part where you build the table string
-	let html = `<table>
-		<tr>
-			<th>Date</th>
-			<th>Item</th>
-			<th>Sold</th>
-			<th>Profit</th>
-			<th>Actions</th>
-		</tr>`;
+    let query;
+    if (editId) {
+        query = _supabase.from('daily_records').update({
+            product_name: item,
+            qty_sold: sold,
+            expenses: exp,
+            qty_bought: bought,
+            profit_made: profit
+        }).eq('id', editId);
+    } else {
+        query = _supabase.from('daily_records').insert({
+            product_name: item,
+            qty_sold: sold,
+            expenses: exp,
+            qty_bought: bought,
+            profit_made: profit
+        });
+    }
 
-	data.forEach(r => {
-		const dateStr = new Date(r.created_at).toLocaleDateString();
-		html += `<tr>
-			<td>${dateStr}</td>
-			<td>${r.product_name}</td>
-			<td>${r.qty_sold}</td>
-			<td class="profit-text">KES ${r.profit_made}</td>
-			<td>
-				<button onclick="editRecord('${r.id}', '${r.product_name}', ${r.qty_sold}, ${r.expenses}, ${r.qty_bought})" style="background:#f39c12; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; margin-right:5px;">Edit</button>
-				<button onclick="deleteRecord('${r.id}')" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Delete</button>
-			</td>
-		</tr>`;
-	});
-        html += `</table>`;
-        document.getElementById('history-table').innerHTML = html;
+    const { error } = await query;
+
+    if (!error) {
+        alert("Record saved!");
+        document.getElementById('edit_id').value = "";
+        document.querySelector('.save-btn').innerText = "Save Daily Record";
+        loadHistory();
+        loadAnalytics();
+    } else {
+        alert("Error: " + error.message);
     }
 }
 	
@@ -295,16 +270,17 @@
             } else {
                 previousProfit += profit;
             }
-			const itemProfits = {};
+	
+			document.getElementById('top-item-display').innerText = topItem;
+			document.getElementById('top-item-stats').innerText = `Profit: KES ${itemProfits[topItem]?.toFixed(2) || 0}`;
+        });
+
+const itemProfits = {};
 			data.forEach(r => {
 				itemProfits[r.product_name] = (itemProfits[r.product_name] || 0) + parseFloat(r.profit_made);
 			});
 
 			let topItem = Object.keys(itemProfits).reduce((a, b) => itemProfits[a] > itemProfits[b] ? a : b, "---");
-			document.getElementById('top-item-display').innerText = topItem;
-			document.getElementById('top-item-stats').innerText = `Profit: KES ${itemProfits[topItem]?.toFixed(2) || 0}`;
-        });
-
         // 1. Update the Pie Chart
         renderSummaryPie(todayExpenses, todayProfit, previousProfit);
 
@@ -355,7 +331,7 @@
 		// 2. Fill the form with the old data
 		document.getElementById('edit_id').value = id;
 		document.getElementById('trans_item').value = name;
-		document.getElementById('qty_sold').value = qty;
+		document.getElementById('qty_sold').value = sold;
 		document.getElementById('qty_bought').value = bought;
 		document.getElementById('daily_exp').value = exp;
 		
@@ -471,8 +447,10 @@ async function updateLabour() {
 
     // Initialize the App
     window.onload = async () => {
-        await loadConfig();
-        loadHistory();
+    await loadConfig();
+    loadHistory();
+    loadAnalytics();
+};
     };
 </script>
 
