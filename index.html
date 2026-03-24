@@ -283,7 +283,20 @@
         let todayExpenses = 0;
         let previousProfit = 0;
 
-        const todayStr = new Date().toLocaleDateString();
+        const dailyTotals = {};
+	data.forEach(r => {
+		const day = new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+		if (!dailyTotals[day]) dailyTotals[day] = 0;
+		dailyTotals[day] += parseFloat(r.profit_made || 0);
+	});
+
+	// Then call the render function:
+	renderChart(Object.keys(dailyTotals), Object.values(dailyTotals));
+
+	// Also update the "Today's Total" display:
+	const todayKey = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+	document.getElementById('day-total-display').innerText = `KES ${(dailyTotals[todayKey] || 0).toFixed(2)}`;
+		const todayStr = new Date().toLocaleDateString();
 
         data.forEach(record => {
             const recordDate = new Date(record.created_at).toLocaleDateString();
@@ -299,6 +312,14 @@
             } else {
                 previousProfit += profit;
             }
+			const itemProfits = {};
+			data.forEach(r => {
+				itemProfits[r.product_name] = (itemProfits[r.product_name] || 0) + parseFloat(r.profit_made);
+			});
+
+			let topItem = Object.keys(itemProfits).reduce((a, b) => itemProfits[a] > itemProfits[b] ? a : b, "---");
+			document.getElementById('top-item-display').innerText = topItem;
+			document.getElementById('top-item-stats').innerText = `Profit: KES ${itemProfits[topItem]?.toFixed(2) || 0}`;
         });
 
         // 1. Update the Pie Chart
@@ -344,13 +365,15 @@
 		}
 }
 
-	function editRecord(id, qty, exp) {
+	function editRecord(id, name, sold, exp, bought) {
 		// 1. Switch to the entry tab
 		showTab('transactions');
 		
 		// 2. Fill the form with the old data
 		document.getElementById('edit_id').value = id;
+		document.getElementById('trans_item').value = name;
 		document.getElementById('qty_sold').value = qty;
+		document.getElementById('qty_bought').value = bought;
 		document.getElementById('daily_exp').value = exp;
 		
 		// 3. Change button text to show we are editing
@@ -437,6 +460,13 @@ async function loadConfig() {
         document.getElementById('product-settings-list').innerHTML = settingsHtml + "</table>";
     }
 }
+
+	async function deleteProduct(productId) {
+		if (confirm(`Delete ${productId}? This won't delete past sales, but you won't be able to select it for new entries.`)) {
+			const { error } = await _supabase.from('inventory_settings').delete().eq('id', productId);
+			if (!error) loadConfig();
+		}
+	}
 
     // Initialize the App
     window.onload = async () => {
