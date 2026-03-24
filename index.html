@@ -36,6 +36,12 @@
     
     <div id="dashboard" class="tab-content active">
         <h1>Dashboard</h1>
+		<div class="card" style="flex: 1;">
+    <h3>💰 Financial Overview</h3>
+    <div style="height: 300px;">
+        <canvas id="summaryPieChart"></canvas>
+    </div>
+</div>
         <div class="card">
             <h3>Recent Sales & Profit History</h3>
             <div id="history-table">Loading records...</div>
@@ -51,6 +57,7 @@
     <h2 id="top-item-display" style="color: #ff9800;">---</h2>
     <p id="top-item-stats" style="font-size: 0.8em; color: #666;">Calculating...</p>
 </div>
+
 </div>
     </div>
 
@@ -69,7 +76,7 @@
             <label>Items Sold Today</label>
             <input type="number" id="qty_sold" value="0" oninput="calcPreview()">
             
-            <label>Other Expenses (Charcoal, Oil, etc.)</label>
+            <label>Other Expenses (Charcoal, Transport, Kachumbari, etc.)</label>
             <input type="number" id="daily_exp" value="0" oninput="calcPreview()">
             
             <div id="preview" class="preview-box">
@@ -106,6 +113,18 @@
             
             <button class="save-btn" style="background:#3498db" onclick="updateSettings()">Update Prices & Labour</button>
         </div>
+		<div class="card">
+		<h3>➕ Add New Product</h3>
+		<div style="display:flex; gap:10px; align-items: end;">
+			<div style="flex:1"><label>Product Name</label><input type="text" id="new_item_name" placeholder="e.g. SAUSAGE"></div>
+			<div style="flex:1"><label>Buying Price</label><input type="number" id="new_item_bp"></div>
+			<div style="flex:1"><label>Selling Price</label><input type="number" id="new_item_sp"></div>
+			<button class="save-btn" style="width:150px; margin-bottom:10px;" onclick="addNewProduct()">Add Item</button>
+		</div>
+		<hr>
+		<h3>📋 Current Products & Prices</h3>
+		<div id="product-settings-list">Loading products...</div>
+	</div>
     </div>
 </div>
 
@@ -260,44 +279,33 @@
         .order('created_at', { ascending: true });
 
     if (data) {
-        const dailyData = {};
-        const productData = {}; // To track profit per product
+        let todayProfit = 0;
+        let todayExpenses = 0;
+        let previousProfit = 0;
+
+        const todayStr = new Date().toLocaleDateString();
 
         data.forEach(record => {
-            // 1. Group by Date for the Line Chart
-            const dateObj = new Date(record.created_at);
-            const dateKey = dateObj.toLocaleDateString('en-GB', { 
-                weekday: 'long', day: 'numeric', month: 'short' 
-            });
-            if (!dailyData[dateKey]) dailyData[dateKey] = 0;
-            dailyData[dateKey] += parseFloat(record.profit_made || 0);
+            const recordDate = new Date(record.created_at).toLocaleDateString();
+            const profit = parseFloat(record.profit_made || 0);
+            
+            // To get accurate expenses, we look at the config for that item
+            const config = currentConfig[record.product_name];
+            const itemExpenses = (record.qty_sold * config.buying_price) + parseFloat(record.expenses) + parseFloat(config.labour_cost);
 
-            // 2. Group by Product for the Top Performer
-            const pName = record.product_name;
-            if (!productData[pName]) productData[pName] = 0;
-            productData[pName] += parseFloat(record.profit_made || 0);
+            if (recordDate === todayStr) {
+                todayProfit += profit;
+                todayExpenses += itemExpenses;
+            } else {
+                previousProfit += profit;
+            }
         });
 
-        // Find the Top Performer
-        let topProduct = "";
-        let maxProfit = -Infinity;
-        for (const [name, profit] of Object.entries(productData)) {
-            if (profit > maxProfit) {
-                maxProfit = profit;
-                topProduct = name;
-            }
-        }
+        // 1. Update the Pie Chart
+        renderSummaryPie(todayExpenses, todayProfit, previousProfit);
 
-        // Update the Top Performer Card
-        document.getElementById('top-item-display').innerText = topProduct;
-        document.getElementById('top-item-stats').innerText = `Total Profit: KES ${maxProfit.toFixed(2)}`;
-
-        // Update Line Chart
-        renderChart(Object.keys(dailyData), Object.values(dailyData));
-
-        // Update Today's Total
-        const todayKey = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
-        document.getElementById('day-total-display').innerText = `KES ${(dailyData[todayKey] || 0).toFixed(2)}`;
+        // 2. Update your other Dashboard elements (Line chart, etc.)
+        // (Keep your existing line chart and top-performer logic here)
     }
 }
 
@@ -348,6 +356,86 @@
 		// 3. Change button text to show we are editing
 		document.querySelector('.save-btn').innerText = "Update Record";
 		calcPreview(); // Refresh the preview box
+}
+
+let summaryPie = null;
+function renderSummaryPie(expenses, todayProfit, prevProfit) {
+    const ctx = document.getElementById('summaryPieChart').getContext('2d');
+    
+    if (summaryPie) summaryPie.destroy();
+    
+    summaryPie = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ["Today's Expenses", "Today's Profit", "Previous Profits"],
+            datasets: [{
+                data: [expenses, todayProfit, prevProfit],
+                backgroundColor: [
+                    '#e74c3c', // Red for Expenses
+                    '#2ecc71', // Green for Today's Profit
+                    '#3498db'  // Blue for Previous Profits
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+// Function to add a brand new item to the business
+async function addNewProduct() {
+    const name = document.getElementById('new_item_name').value.toUpperCase();
+    const bp = document.getElementById('new_item_bp').value;
+    const sp = document.getElementById('new_item_sp').value;
+    const lab = document.getElementById('labour_cost').value; // Uses current default labour
+
+    if(!name || !bp || !sp) return alert("Please fill all fields");
+
+    const { error } = await _supabase.from('inventory_settings').upsert({
+        id: name,
+        buying_price: bp,
+        selling_price: sp,
+        labour_cost: lab
+    });
+
+    if(!error) {
+        alert(name + " added successfully!");
+        document.getElementById('new_item_name').value = "";
+        loadConfig(); // Refresh prices and dropdowns
+    }
+}
+
+// Updated loadConfig to refresh the Dropdown Menu in Daily Entry
+async function loadConfig() {
+    const { data } = await _supabase.from('inventory_settings').select('*');
+    if (data) {
+        let dropdownHtml = "";
+        let settingsHtml = "<table><tr><th>Product</th><th>B.P</th><th>S.P</th><th>Action</th></tr>";
+
+        data.forEach(item => {
+            currentConfig[item.id] = item;
+            
+            // Add to the Daily Entry Dropdown
+            dropdownHtml += `<option value="${item.id}">${item.id}</option>`;
+            
+            // Add to the Settings List
+            settingsHtml += `<tr>
+                <td>${item.id}</td>
+                <td>${item.buying_price}</td>
+                <td>${item.selling_price}</td>
+                <td><button onclick="deleteProduct('${item.id}')" style="background:red; color:white; border:none; cursor:pointer;">Remove</button></td>
+            </tr>`;
+        });
+
+        document.getElementById('trans_item').innerHTML = dropdownHtml;
+        document.getElementById('product-settings-list').innerHTML = settingsHtml + "</table>";
+    }
 }
 
     // Initialize the App
