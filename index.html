@@ -211,7 +211,10 @@
     <div class="card">
         <canvas id="profitChart"></canvas>
     </div>
-
+<div class="card">
+    <h3>Daily Breakdown</h3>
+    <canvas id="summaryPie"></canvas>
+</div>
     <div class="grid">
         <div class="card">
             <h3>Today's Profit</h3>
@@ -270,6 +273,15 @@
         <h3>Products</h3>
         <div id="product-settings-list"></div>
     </div>
+	<div class="card">
+    <h3>Add / Update Product</h3>
+
+    <input type="text" id="new_name" placeholder="Product Name">
+    <input type="number" id="new_buying" placeholder="Buying Price">
+    <input type="number" id="new_selling" placeholder="Selling Price">
+
+    <button class="save-btn" onclick="saveProduct()">Save Product</button>
+</div>
 </div>
 <script>
 const SB_URL = 'https://wnlqacxktltvqrcworoq.supabase.co';
@@ -279,7 +291,9 @@ const _supabase = supabase.createClient(SB_URL, SB_KEY);
 let currentConfig = {};
 let globalLabour = 350;
 let chart = null;
-
+let todayBuying = 0;
+let todayExpenses = 0;
+let todaySales = 0;
 // ======================
 // TABS
 // ======================
@@ -320,12 +334,15 @@ async function loadConfig() {
             dropdown += `<option value="${item.id}">${item.id}</option>`;
 
             table += `
-                <tr>
-                    <td>${item.id}</td>
-                    <td>KES ${item.buying_price}</td>
-                    <td>KES ${item.selling_price}</td>
-                </tr>
-            `;
+<tr>
+    <td>${item.id}</td>
+    <td><input value="${item.buying_price}" onchange="updatePrice('${item.id}', 'buying_price', this.value)"></td>
+    <td><input value="${item.selling_price}" onchange="updatePrice('${item.id}', 'selling_price', this.value)"></td>
+    <td>
+        <button onclick="deleteProduct('${item.id}')">Delete</button>
+    </td>
+</tr>
+`;
         });
 
         trans_item.innerHTML = dropdown;
@@ -524,20 +541,32 @@ async function loadAnalytics() {
 
         let daily = {};
 
-        data.forEach(r => {
-            const date = new Date(r.created_at).toLocaleDateString();
-            const c = currentConfig[r.product_name];
+       data.forEach(r => {
+    const date = new Date(r.created_at).toLocaleDateString();
+    const c = currentConfig[r.product_name];
 
-            if (!c) return;
+    if (!c) return;
 
-            if (!daily[date]) {
-                daily[date] = { sales: 0, buying: 0, exp: 0 };
-            }
+    if (!daily[date]) {
+        daily[date] = { sales: 0, buying: 0, exp: 0 };
+    }
 
-            daily[date].sales += r.qty_sold * c.selling_price;
-            daily[date].buying += r.qty_bought * c.buying_price;
-            daily[date].exp += r.expenses || 0;
-        });
+    const sales = r.qty_sold * c.selling_price;
+    const buying = r.qty_bought * c.buying_price;
+    const exp = r.expenses || 0;
+
+    daily[date].sales += sales;
+    daily[date].buying += buying;
+    daily[date].exp += exp;
+
+    // 👇 TRACK TODAY ONLY
+    const today = new Date().toLocaleDateString();
+    if (date === today) {
+        todaySales += sales;
+        todayBuying += buying;
+        todayExpenses += exp;
+    }
+});s
 
         let labels = Object.keys(daily);
         let values = labels.map(d => {
@@ -557,12 +586,21 @@ async function loadAnalytics() {
         console.error(err);
         alert("Analytics failed");
     }
+	renderChart(labels, values);
 }
 
 // ======================
 // CHART
 // ======================
 function renderChart(labels, values) {
+const todayProfit = todaySales - todayBuying - todayExpenses - globalLabour;
+
+renderPie(
+    todayBuying,
+    todayExpenses,
+    globalLabour,
+    todayProfit
+);
     const ctx = document.getElementById('profitChart');
 
     if (chart) chart.destroy();
@@ -584,6 +622,118 @@ function renderChart(labels, values) {
             responsive: true,
             plugins: {
                 legend: { display: true }
+            }
+        }
+    });
+}
+
+// ======================
+// ADD / UPDATE PRODUCT
+// ======================
+async function saveProduct() {
+    const name = new_name.value.trim();
+    const buying = parseFloat(new_buying.value);
+    const selling = parseFloat(new_selling.value);
+
+    if (!name) return alert("Enter product name");
+
+    try {
+        const { error } = await _supabase
+            .from('inventory_settings')
+            .upsert([{
+                id: name,
+                buying_price: buying || 0,
+                selling_price: selling || 0,
+                labour_cost: globalLabour
+            }]);
+
+        if (error) throw error;
+
+        alert("Product saved");
+
+        new_name.value = "";
+        new_buying.value = "";
+        new_selling.value = "";
+
+        loadConfig();
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to save product");
+    }
+}
+
+// ======================
+// UPDATE PRICE INLINE
+// ======================
+async function updatePrice(id, field, value) {
+    try {
+        const update = {};
+        update[field] = parseFloat(value) || 0;
+
+        const { error } = await _supabase
+            .from('inventory_settings')
+            .update(update)
+            .eq('id', id);
+
+        if (error) throw error;
+
+        loadConfig();
+
+    } catch (err) {
+        console.error(err);
+        alert("Price update failed");
+    }
+}
+
+// ======================
+// DELETE PRODUCT
+// ======================
+async function deleteProduct(id) {
+    if (!confirm("Delete this product?")) return;
+
+    try {
+        const { error } = await _supabase
+            .from('inventory_settings')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        loadConfig();
+
+    } catch (err) {
+        console.error(err);
+        alert("Delete failed");
+    }
+}
+
+let pieChart;
+
+function renderPie(buying, expenses, labour, profit) {
+    const ctx = document.getElementById('summaryPie');
+
+    if (pieChart) pieChart.destroy();
+
+    pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Buying Cost', 'Expenses', 'Labour', 'Profit'],
+            datasets: [{
+                data: [buying, expenses, labour, profit],
+                backgroundColor: [
+                    '#e74c3c',
+                    '#f39c12',
+                    '#3498db',
+                    '#2ecc71'
+                ]
+            }]
+        },
+        options: {
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
             }
         }
     });
