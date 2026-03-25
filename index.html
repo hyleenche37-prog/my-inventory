@@ -199,15 +199,15 @@
 }
 
 .logo-container img {
-    width: 60px;
-    height: 60px;
+    width: 100px;
+    height: 100px;
     object-fit: contain;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
 }
 
 .logo-container h3 {
     margin: 0;
-    font-size: 16px;
+    font-size: 40px;
 }
     </style>
 </head>
@@ -216,7 +216,7 @@
 <nav>
 <div class="logo-container">
     <img src="logo.png" alt="Logo">
-    <h3>My Inventory</h3>
+    <h3>Hyleen's Biz</h3>
 </div>
     <h2>📦</h2>
     <button onclick="showTab('dashboard')">📊 Dashboard</button>
@@ -245,7 +245,7 @@
 
         <div class="card">
             <h3>Quick Tip</h3>
-            <p>Track buying vs selling daily to avoid hidden losses.</p>
+            <p>The Expense a Business Makes should Come Back as a Profit.</p>
         </div>
     </div>
 
@@ -276,9 +276,9 @@
         <label>Expenses</label>
         <input type="number" id="daily_exp" placeholder="e.g 200" oninput="calcPreview()">
 
-        <div id="preview">Enter values to see profit...</div>
+        <div id="preview">Enter values to see profit... 😊</div>
 
-        <button class="save-btn" onclick="saveTransaction()">Save Record</button>
+        <button class="save-btn" onclick="saveTransaction()">Save Record😎</button>
 
         <input type="hidden" id="edit_id">
     </div>
@@ -365,7 +365,7 @@ async function loadConfig() {
     <td><input value="${item.buying_price}" onchange="updatePrice('${item.id}', 'buying_price', this.value)"></td>
     <td><input value="${item.selling_price}" onchange="updatePrice('${item.id}', 'selling_price', this.value)"></td>
     <td>
-        <button onclick="deleteProduct('${item.id}')">Delete</button>
+        <button onclick="deleteProduct('${item.id}')">🗑</button>
     </td>
 </tr>
 `;
@@ -396,12 +396,12 @@ async function updateSettings() {
         const { error } = await _supabase.from('inventory_settings').upsert(updates);
         if (error) throw error;
 
-        alert("Settings updated");
+        alert("✔");
         loadConfig();
 
     } catch (err) {
         console.error(err);
-        alert("Failed to update settings");
+        alert("❌");
     }
 }
 
@@ -496,7 +496,7 @@ async function loadHistory() {
                     <td>${r.qty_sold}</td>
                     <td>
                         <button class="secondary" onclick="editRecord('${r.id}','${r.product_name}',${r.qty_sold},${r.expenses},${r.qty_bought})">Edit</button>
-                        <button onclick="deleteRecord('${r.id}')">Delete</button>
+                        <button onclick="deleteRecord('${r.id}')">🗑</button>
                     </td>
                 </tr>
             `;
@@ -672,7 +672,7 @@ async function saveProduct() {
 
         if (error) throw error;
 
-        alert("Product saved");
+        alert("✔");
 
         new_name.value = "";
         new_buying.value = "";
