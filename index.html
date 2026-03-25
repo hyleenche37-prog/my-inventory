@@ -1,35 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<link rel="icon" type="image/png" href="logo.png">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Business ERP - Inventory & Profit</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+	
+	
     <style>
         * {
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #f4f7f6;
-            margin: 0;
-            display: flex;
-            color: #2c3e50;
-        }
+		body {
+		font-family: 'Segoe UI', sans-serif;
+		background: #f4f7f6;
+		margin: 0;
+		display: flex;
+	}
 
         /* SIDEBAR */
-        nav {
-            width: 230px;
-            background: #1f2d3d;
-            color: white;
-            height: 100vh;
-            padding: 20px;
-            position: fixed;
-            display: flex;
-            flex-direction: column;
-        }
+		nav {
+		width: 220px;
+		background: #2c3e50;
+		color: white;
+		height: 100vh;
+		padding: 20px;
+		position: fixed;
+	}
 
         nav h2 {
             text-align: center;
@@ -58,11 +58,11 @@
         }
 
         /* MAIN CONTENT */
-        .main-content {
-            margin-left: 250px;
-            padding: 30px;
-            width: 100%;
-        }
+		.main-content {
+		margin-left: 260px;
+		padding: 20px;
+		width: calc(100% - 260px);
+	}
 
         /* TABS */
         .tab-content { display: none; }
@@ -70,12 +70,11 @@
 
         /* CARDS */
         .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
 
         /* GRID */
         .grid {
@@ -90,14 +89,13 @@
         }
 
         /* INPUTS */
-        input, select {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            transition: 0.2s;
-        }
+		input, select {
+		width: 100%;
+		padding: 14px;
+		margin: 10px 0;
+		font-size: 16px;
+		border-radius: 6px;
+		border: 1px solid #ccc;
 
         input:focus, select:focus {
             border-color: #3498db;
@@ -105,17 +103,15 @@
         }
 
         /* BUTTONS */
-        .save-btn {
-            background: #27ae60;
-            color: white;
-            padding: 14px;
-            border: none;
-            width: 100%;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-        }
+		.save-btn {
+		background: #27ae60;
+		color: white;
+		padding: 16px;
+		border: none;
+		width: 100%;
+		font-size: 16px;
+		border-radius: 6px;
+	}
 
         .save-btn:hover {
             background: #219150;
@@ -176,20 +172,51 @@
 
         /* MOBILE */
         @media (max-width: 768px) {
-            nav {
-                position: relative;
-                width: 100%;
-                height: auto;
-            }
 
-            .main-content {
-                margin-left: 0;
-            }
+    body {
+        flex-direction: column;
+    }
 
-            .grid {
-                flex-direction: column;
-            }
-        }
+    nav {
+        position: relative;
+        width: 100%;
+        height: auto;
+        display: flex;
+        justify-content: space-around;
+        padding: 10px;
+    }
+
+    nav button {
+        flex: 1;
+        margin: 5px;
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 15px;
+    }
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table td, table th {
+    padding: 8px;
+    font-size: 14px;
+}
+
+/* SCROLLABLE TABLE */
+.table-wrapper {
+    overflow-x: auto;
+}
+canvas {
+    max-width: 100%;
+}
     </style>
 </head>
 
