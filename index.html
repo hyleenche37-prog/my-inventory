@@ -531,76 +531,72 @@ function resetForm() {
 // ANALYTICS (FIXED + SORTED)
 // ======================
 async function loadAnalytics() {
-    try {
-        const { data, error } = await _supabase
-            .from('daily_records')
-            .select('*')
-            .order('created_at', { ascending: true });
 
-        if (error) throw error;
+    todayBuying = 0;
+    todayExpenses = 0;
+    todaySales = 0;
 
-        let daily = {};
+    const { data } = await _supabase
+        .from('daily_records')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-       data.forEach(r => {
-    const date = new Date(r.created_at).toLocaleDateString();
-    const c = currentConfig[r.product_name];
+    let daily = {};
 
-    if (!c) return;
+    data.forEach(r => {
+        const date = new Date(r.created_at).toLocaleDateString();
+        const c = currentConfig[r.product_name];
 
-    if (!daily[date]) {
-        daily[date] = { sales: 0, buying: 0, exp: 0 };
-    }
+        if (!c) return;
 
-    const sales = r.qty_sold * c.selling_price;
-    const buying = r.qty_bought * c.buying_price;
-    const exp = r.expenses || 0;
+        if (!daily[date]) {
+            daily[date] = { sales: 0, buying: 0, exp: 0 };
+        }
 
-    daily[date].sales += sales;
-    daily[date].buying += buying;
-    daily[date].exp += exp;
+        const sales = r.qty_sold * c.selling_price;
+        const buying = r.qty_bought * c.buying_price;
+        const exp = r.expenses || 0;
 
-    // 👇 TRACK TODAY ONLY
-    const today = new Date().toLocaleDateString();
-    if (date === today) {
-        todaySales += sales;
-        todayBuying += buying;
-        todayExpenses += exp;
-    }
-});s
-
-        let labels = Object.keys(daily);
-        let values = labels.map(d => {
-            const v = daily[d];
-            return v.sales - v.buying - v.exp - globalLabour;
-        });
-
-        renderChart(labels, values);
+        daily[date].sales += sales;
+        daily[date].buying += buying;
+        daily[date].exp += exp;
 
         const today = new Date().toLocaleDateString();
-        const todayIndex = labels.indexOf(today);
+        if (date === today) {
+            todaySales += sales;
+            todayBuying += buying;
+            todayExpenses += exp;
+        }
+    });
 
-        document.getElementById('day-total-display').innerText =
-            "KES " + (todayIndex !== -1 ? values[todayIndex].toFixed(2) : "0");
+    let labels = Object.keys(daily);
+    let values = labels.map(d => {
+        const v = daily[d];
+        return v.sales - v.buying - v.exp - globalLabour;
+    });
 
-    } catch (err) {
-        console.error(err);
-        alert("Analytics failed");
-    }
-	renderChart(labels, values);
+    renderChart(labels, values);
+
+    const todayProfit = todaySales - todayBuying - todayExpenses - globalLabour;
+
+    renderPie(
+        todayBuying,
+        todayExpenses,
+        globalLabour,
+        todayProfit
+    );
+
+    const today = new Date().toLocaleDateString();
+    const todayIndex = labels.indexOf(today);
+
+    document.getElementById('day-total-display').innerText =
+        "KES " + (todayIndex !== -1 ? values[todayIndex].toFixed(2) : "0");
 }
 
 // ======================
 // CHART
 // ======================
 function renderChart(labels, values) {
-const todayProfit = todaySales - todayBuying - todayExpenses - globalLabour;
-
-renderPie(
-    todayBuying,
-    todayExpenses,
-    globalLabour,
-    todayProfit
-);
     const ctx = document.getElementById('profitChart');
 
     if (chart) chart.destroy();
