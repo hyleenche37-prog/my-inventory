@@ -231,6 +231,10 @@
         <h3>Recent Records</h3>
         <div id="history-table"></div>
     </div>
+	<div class="card">
+    <h3>Daily Profit History</h3>
+    <div id="daily-summary-table"></div>
+</div>
 </div>
 
 <!-- TRANSACTIONS -->
@@ -591,6 +595,7 @@ async function loadAnalytics() {
 
     document.getElementById('day-total-display').innerText =
         "KES " + (todayIndex !== -1 ? values[todayIndex].toFixed(2) : "0");
+		renderDailySummary(daily);
 }
 
 // ======================
@@ -733,6 +738,40 @@ function renderPie(buying, expenses, labour, profit) {
             }
         }
     });
+}
+
+function renderDailySummary(daily) {
+    let html = `
+    <table border="1" style="width:100%; border-collapse: collapse;">
+        <tr>
+            <th>Date</th>
+            <th>Sales</th>
+            <th>Buying</th>
+            <th>Expenses</th>
+            <th>Profit</th>
+        </tr>
+    `;
+
+    Object.keys(daily).forEach(date => {
+        const d = daily[date];
+        const profit = d.sales - d.buying - d.exp;
+
+        html += `
+        <tr>
+            <td>${date}</td>
+            <td>KES ${d.sales.toFixed(2)}</td>
+            <td>KES ${d.buying.toFixed(2)}</td>
+            <td>KES ${d.exp.toFixed(2)}</td>
+            <td style="color:${profit >= 0 ? 'green' : 'red'}">
+                KES ${profit.toFixed(2)}
+            </td>
+        </tr>
+        `;
+    });
+
+    html += "</table>";
+
+    document.getElementById("daily-summary-table").innerHTML = html;
 }
 
 // ======================
