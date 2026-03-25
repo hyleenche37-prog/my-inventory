@@ -2,30 +2,65 @@
 <html>
 <head>
     <title>Business ERP - Inventory & Profit</title>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; }
-        nav { width: 220px; background: #2c3e50; color: white; height: 100vh; padding: 20px; position: fixed; }
-        .main-content { margin-left: 260px; padding: 40px; width: calc(100% - 300px); }
+
+        nav {
+            width: 220px;
+            background: #2c3e50;
+            color: white;
+            height: 100vh;
+            padding: 20px;
+            position: fixed;
+        }
+
+        nav button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #34495e;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+            width: 100%;
+        }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        nav button { display: block; width: 100%; padding: 12px; margin-bottom: 10px; background: #34495e; border: none; color: white; cursor: pointer; }
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
 
-        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        input, select { width: 100%; padding: 10px; margin: 10px 0; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
 
-        .save-btn { background: #27ae60; color: white; padding: 12px; border: none; cursor: pointer; width: 100%; }
+        .save-btn {
+            background: green;
+            color: white;
+            padding: 12px;
+            border: none;
+            width: 100%;
+        }
     </style>
 </head>
-
 <body>
-
 <nav>
-    <h2>My Inventory</h2>
     <button onclick="showTab('dashboard')">Dashboard</button>
     <button onclick="showTab('transactions')">Daily Entry</button>
     <button onclick="showTab('settings')">Settings</button>
@@ -33,180 +68,195 @@
 
 <div class="main-content">
 
-    <!-- DASHBOARD -->
-    <div id="dashboard" class="tab-content active">
-        <h2>Dashboard</h2>
-        <canvas id="profitChart"></canvas>
-    </div>
+<div id="dashboard" class="tab-content active">
+    <h2>Dashboard</h2>
 
-    <!-- TRANSACTIONS -->
-    <div id="transactions" class="tab-content">
-        <h2>Daily Entry</h2>
+    <canvas id="profitChart"></canvas>
 
-        <select id="trans_item"></select>
+    <h3>Today's Profit</h3>
+    <h2 id="day-total-display">KES 0</h2>
 
-        <input type="number" id="qty_bought" placeholder="Stock Bought">
-        <input type="number" id="qty_sold" placeholder="Items Sold">
-        <input type="number" id="daily_exp" placeholder="Expenses">
+    <div id="history-table"></div>
+</div>
+<div id="transactions" class="tab-content">
+    <h2>Daily Entry</h2>
 
-        <div id="preview"></div>
+    <select id="trans_item"></select>
 
-        <button class="save-btn" onclick="saveTransaction()">Save Daily Record</button>
-        <input type="hidden" id="edit_id">
-    </div>
+    <input type="number" id="qty_bought" placeholder="Bought">
+    <input type="number" id="qty_sold" placeholder="Sold" oninput="calcPreview()">
+    <input type="number" id="daily_exp" placeholder="Expenses" oninput="calcPreview()">
 
-    <!-- SETTINGS -->
-    <div id="settings" class="tab-content">
-        <h2>Settings</h2>
+    <div id="preview"></div>
 
-        <input type="number" id="labour_cost" placeholder="Labour Cost">
+    <button class="save-btn" onclick="saveTransaction()">Save</button>
 
-        <button onclick="updateSettings()">Update</button>
-    </div>
-
+    <input type="hidden" id="edit_id">
 </div>
 
+<div id="settings" class="tab-content">
+    <h2>Settings</h2>
+
+    <label>Labour Cost</label>
+    <input type="number" id="labour_cost" value="350">
+
+    <button onclick="updateSettings()">Save Settings</button>
+</div>
+
+</div> <!-- END main -->
+
 <script>
-const SB_URL = "https://wnlqacxktltvqrcworoq.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubHFhY3hrdGx0dnFyY3dvcm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzMzMzIsImV4cCI6MjA4OTk0OTMzMn0.e2cnyFTBpcxwl4onnBcECSib9pUB4UuEhZ-D7TDG_9A";
+const SB_URL = "YOUR_URL";
+const SB_KEY = "YOUR_KEY";
 const _supabase = supabase.createClient(SB_URL, SB_KEY);
 
 let currentConfig = {};
 let globalLabour = 350;
-let chart = null;
 
 // TABS
-function showTab(tabId) {
+function showTab(tab) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
+    document.getElementById(tab).classList.add('active');
 
-    if(tabId === "dashboard") loadAnalytics();
+    if (tab === "dashboard") {
+        loadHistory();
+        loadAnalytics();
+    }
 }
 
-// LOAD CONFIG (ONLY ONE VERSION ✅)
 async function loadConfig() {
     const { data } = await _supabase.from('inventory_settings').select('*');
 
-    let dropdown = "";
+    let options = "";
 
-    if (data) {
-        data.forEach(item => {
-            currentConfig[item.id] = item;
-            dropdown += `<option value="${item.id}">${item.id}</option>`;
-            globalLabour = item.labour_cost || 350;
+    data.forEach(item => {
+        currentConfig[item.id] = item;
+        globalLabour = item.labour_cost || 350;
+        options += `<option value="${item.id}">${item.id}</option>`;
+    });
+
+    document.getElementById('trans_item').innerHTML = options;
+    document.getElementById('labour_cost').value = globalLabour;
+}
+
+async function updateSettings() {
+    const lab = document.getElementById('labour_cost').value;
+
+    for (let key in currentConfig) {
+        await _supabase.from('inventory_settings').upsert({
+            id: key,
+            ...currentConfig[key],
+            labour_cost: lab
         });
     }
 
-    document.getElementById("trans_item").innerHTML = dropdown;
-    document.getElementById("labour_cost").value = globalLabour;
+    alert("Updated");
+    loadConfig();
 }
 
-// PREVIEW (OPTIONAL)
 function calcPreview() {
-    const item = document.getElementById("trans_item").value;
+    const item = trans_item.value;
     if (!currentConfig[item]) return;
 
-    const sold = Number(document.getElementById("qty_sold").value) || 0;
-    const exp = Number(document.getElementById("daily_exp").value) || 0;
+    const sold = parseFloat(qty_sold.value) || 0;
+    const exp = parseFloat(daily_exp.value) || 0;
 
-    const cfg = currentConfig[item];
+    const config = currentConfig[item];
 
-    const profit = (sold * cfg.selling_price) - (sold * cfg.buying_price) - exp - globalLabour;
+    const sales = sold * config.selling_price;
+    const cost = (sold * config.buying_price) + exp + globalLabour;
 
-    document.getElementById("preview").innerHTML =
-        `<b>Estimated Profit: KES ${profit.toFixed(2)}</b>`;
+    preview.innerHTML = `Profit: KES ${(sales - cost).toFixed(2)}`;
 }
 
-// SAVE
 async function saveTransaction() {
-    const item = document.getElementById("trans_item").value;
-    const sold = Number(document.getElementById("qty_sold").value) || 0;
-    const bought = Number(document.getElementById("qty_bought").value) || 0;
-    const exp = Number(document.getElementById("daily_exp").value) || 0;
+    const record = {
+        product_name: trans_item.value,
+        qty_sold: parseInt(qty_sold.value) || 0,
+        qty_bought: parseInt(qty_bought.value) || 0,
+        expenses: parseFloat(daily_exp.value) || 0
+    };
 
-    await _supabase.from('daily_records').insert([{
-        product_name: item,
-        qty_sold: sold,
-        qty_bought: bought,
-        expenses: exp
-    }]);
+    await _supabase.from('daily_records').insert([record]);
 
-    alert("Saved!");
+    alert("Saved");
+    loadHistory();
     loadAnalytics();
 }
 
-// ✅ EXCEL-STYLE ANALYTICS (MAIN FIX)
+async function loadHistory() {
+    const { data } = await _supabase.from('daily_records').select('*');
+
+    let html = "<table>";
+
+    data.forEach(r => {
+        html += `<tr>
+            <td>${r.product_name}</td>
+            <td>${r.qty_sold}</td>
+        </tr>`;
+    });
+
+    html += "</table>";
+    document.getElementById('history-table').innerHTML = html;
+}
+
 async function loadAnalytics() {
     const { data } = await _supabase.from('daily_records').select('*');
 
-    if (!data) return;
-
-    let dailyData = {};
+    let daily = {};
 
     data.forEach(r => {
-        const dateKey = new Date(r.created_at).toLocaleDateString();
+        const d = new Date(r.created_at).toLocaleDateString();
 
-        if (!dailyData[dateKey]) {
-            dailyData[dateKey] = {
-                totalSales: 0,
-                totalBuying: 0,
-                expenses: 0
-            };
+        if (!daily[d]) {
+            daily[d] = { sales: 0, buying: 0, exp: 0 };
         }
 
-        const config = currentConfig[r.product_name] || { buying_price: 0, selling_price: 0 };
+        const c = currentConfig[r.product_name];
 
-        dailyData[dateKey].totalSales += r.qty_sold * config.selling_price;
-        dailyData[dateKey].totalBuying += r.qty_bought * config.buying_price;
-        dailyData[dateKey].expenses += Number(r.expenses || 0);
+        daily[d].sales += r.qty_sold * c.selling_price;
+        daily[d].buying += r.qty_bought * c.buying_price;
+        daily[d].exp += r.expenses;
     });
 
     let labels = [];
     let values = [];
 
-    Object.keys(dailyData).forEach(date => {
-        const d = dailyData[date];
+    for (let d in daily) {
+        const profit = daily[d].sales - daily[d].buying - daily[d].exp - globalLabour;
 
-        const profit = d.totalSales - d.totalBuying - d.expenses - globalLabour;
-
-        labels.push(date);
+        labels.push(d);
         values.push(profit);
-    });
+    }
 
     renderChart(labels, values);
+
+    const today = new Date().toLocaleDateString();
+    document.getElementById('day-total-display').innerText =
+        "KES " + (values[labels.indexOf(today)] || 0);
 }
 
-// CHART
+let chart;
+
 function renderChart(labels, values) {
-    const ctx = document.getElementById("profitChart").getContext("2d");
+    const ctx = document.getElementById('profitChart');
 
     if (chart) chart.destroy();
 
     chart = new Chart(ctx, {
-        type: "line",
+        type: 'line',
         data: {
-            labels: labels,
+            labels,
             datasets: [{
-                label: "Daily Profit",
                 data: values
             }]
         }
     });
 }
 
-// SETTINGS
-function updateSettings() {
-    globalLabour = Number(document.getElementById("labour_cost").value) || 350;
-    alert("Updated!");
-}
-
-// AUTO PREVIEW
-document.addEventListener("input", calcPreview);
-
-// INIT
 window.onload = async () => {
     await loadConfig();
-    loadAnalytics();
+    loadHistory();
 };
 </script>
 
