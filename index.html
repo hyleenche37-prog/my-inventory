@@ -7,237 +7,561 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; }
+        * {
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f4f7f6;
+            margin: 0;
+            display: flex;
+            color: #2c3e50;
+        }
+
+        /* SIDEBAR */
         nav {
-            width: 220px;
-            background: #2c3e50;
+            width: 230px;
+            background: #1f2d3d;
             color: white;
             height: 100vh;
             padding: 20px;
             position: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        nav h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
         }
 
         nav button {
+            display: block;
             width: 100%;
             padding: 12px;
             margin-bottom: 10px;
-            background: #34495e;
+            background: #2c3e50;
             border: none;
             color: white;
             cursor: pointer;
+            border-radius: 6px;
+            transition: 0.2s;
+            text-align: left;
         }
 
+        nav button:hover {
+            background: #3498db;
+        }
+
+        /* MAIN CONTENT */
         .main-content {
-            margin-left: 260px;
+            margin-left: 250px;
             padding: 30px;
             width: 100%;
         }
 
+        /* TABS */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
+        /* CARDS */
         .card {
             background: white;
             padding: 20px;
+            border-radius: 10px;
             margin-bottom: 20px;
-            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
+        /* GRID */
+        .grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .grid .card {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        /* INPUTS */
         input, select {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            transition: 0.2s;
         }
 
+        input:focus, select:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        /* BUTTONS */
         .save-btn {
-            background: green;
+            background: #27ae60;
             color: white;
-            padding: 12px;
+            padding: 14px;
             border: none;
             width: 100%;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .save-btn:hover {
+            background: #219150;
+        }
+
+        button.secondary {
+            background: #3498db;
+            color: white;
+            border-radius: 6px;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        button.secondary:hover {
+            background: #2c80b4;
+        }
+
+        /* TEXT */
+        h1 { margin-top: 0; }
+        h3 { margin-bottom: 10px; }
+
+        .profit-text {
+            color: #27ae60;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        /* PREVIEW BOX */
+        #preview {
+            background: #ecf7ff;
+            padding: 15px;
+            border-left: 5px solid #3498db;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        /* TABLE */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        td, th {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #fafafa;
+            text-align: left;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        /* MOBILE */
+        @media (max-width: 768px) {
+            nav {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .grid {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
+
 <body>
+
 <nav>
-    <button onclick="showTab('dashboard')">Dashboard</button>
-    <button onclick="showTab('transactions')">Daily Entry</button>
-    <button onclick="showTab('settings')">Settings</button>
+    <h2>📦 My ERP</h2>
+    <button onclick="showTab('dashboard')">📊 Dashboard</button>
+    <button onclick="showTab('transactions')">📝 Daily Entry</button>
+    <button onclick="showTab('settings')">⚙️ Settings</button>
 </nav>
 
 <div class="main-content">
 
+<!-- DASHBOARD -->
 <div id="dashboard" class="tab-content active">
-    <h2>Dashboard</h2>
+    <h1>Dashboard</h1>
 
-    <canvas id="profitChart"></canvas>
+    <div class="card">
+        <canvas id="profitChart"></canvas>
+    </div>
 
-    <h3>Today's Profit</h3>
-    <h2 id="day-total-display">KES 0</h2>
+    <div class="grid">
+        <div class="card">
+            <h3>Today's Profit</h3>
+            <h2 id="day-total-display" class="profit-text">KES 0</h2>
+        </div>
 
-    <div id="history-table"></div>
+        <div class="card">
+            <h3>Quick Tip</h3>
+            <p>Track buying vs selling daily to avoid hidden losses.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Recent Records</h3>
+        <div id="history-table"></div>
+    </div>
 </div>
+
+<!-- TRANSACTIONS -->
 <div id="transactions" class="tab-content">
-    <h2>Daily Entry</h2>
+    <h1>Daily Entry</h1>
 
-    <select id="trans_item"></select>
+    <div class="card">
+        <label>Item</label>
+        <select id="trans_item" onchange="calcPreview()"></select>
 
-    <input type="number" id="qty_bought" placeholder="Bought">
-    <input type="number" id="qty_sold" placeholder="Sold" oninput="calcPreview()">
-    <input type="number" id="daily_exp" placeholder="Expenses" oninput="calcPreview()">
+        <label>Stock Bought</label>
+        <input type="number" id="qty_bought" placeholder="e.g 100">
 
-    <div id="preview"></div>
+        <label>Items Sold</label>
+        <input type="number" id="qty_sold" placeholder="e.g 80" oninput="calcPreview()">
 
-    <button class="save-btn" onclick="saveTransaction()">Save</button>
+        <label>Expenses</label>
+        <input type="number" id="daily_exp" placeholder="e.g 200" oninput="calcPreview()">
 
-    <input type="hidden" id="edit_id">
+        <div id="preview">Enter values to see profit...</div>
+
+        <button class="save-btn" onclick="saveTransaction()">Save Record</button>
+
+        <input type="hidden" id="edit_id">
+    </div>
 </div>
 
+<!-- SETTINGS -->
 <div id="settings" class="tab-content">
-    <h2>Settings</h2>
+    <h1>Settings</h1>
 
-    <label>Labour Cost</label>
-    <input type="number" id="labour_cost" value="350">
+    <div class="card">
+        <label>Daily Labour Cost</label>
+        <input type="number" id="labour_cost" value="350">
 
-    <button onclick="updateSettings()">Save Settings</button>
+        <button class="secondary" onclick="updateSettings()">Save Settings</button>
+    </div>
+
+    <div class="card">
+        <h3>Products</h3>
+        <div id="product-settings-list"></div>
+    </div>
 </div>
-
-</div> <!-- END main -->
-
 <script>
-const SB_URL = "YOUR_URL";
-const SB_KEY = "YOUR_KEY";
+const SB_URL = 'https://wnlqacxktltvqrcworoq.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubHFhY3hrdGx0dnFyY3dvcm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzMzMzIsImV4cCI6MjA4OTk0OTMzMn0.e2cnyFTBpcxwl4onnBcECSib9pUB4UuEhZ-D7TDG_9A';
 const _supabase = supabase.createClient(SB_URL, SB_KEY);
 
 let currentConfig = {};
 let globalLabour = 350;
+let chart = null;
 
+// ======================
 // TABS
-function showTab(tab) {
+// ======================
+function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.getElementById(tab).classList.add('active');
+    document.getElementById(tabId).classList.add('active');
 
-    if (tab === "dashboard") {
+    if (tabId === 'dashboard') {
         loadHistory();
         loadAnalytics();
     }
 }
 
+// ======================
+// CONFIG LOAD
+// ======================
 async function loadConfig() {
-    const { data } = await _supabase.from('inventory_settings').select('*');
+    try {
+        const { data, error } = await _supabase.from('inventory_settings').select('*');
+        if (error) throw error;
 
-    let options = "";
+        currentConfig = {};
 
-    data.forEach(item => {
-        currentConfig[item.id] = item;
-        globalLabour = item.labour_cost || 350;
-        options += `<option value="${item.id}">${item.id}</option>`;
-    });
+        let dropdown = "";
+        let table = `
+            <table>
+                <tr>
+                    <th>Product</th>
+                    <th>Buying</th>
+                    <th>Selling</th>
+                </tr>
+        `;
 
-    document.getElementById('trans_item').innerHTML = options;
-    document.getElementById('labour_cost').value = globalLabour;
-}
+        data.forEach(item => {
+            currentConfig[item.id] = item;
+            globalLabour = item.labour_cost || globalLabour;
 
-async function updateSettings() {
-    const lab = document.getElementById('labour_cost').value;
+            dropdown += `<option value="${item.id}">${item.id}</option>`;
 
-    for (let key in currentConfig) {
-        await _supabase.from('inventory_settings').upsert({
-            id: key,
-            ...currentConfig[key],
-            labour_cost: lab
+            table += `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>KES ${item.buying_price}</td>
+                    <td>KES ${item.selling_price}</td>
+                </tr>
+            `;
         });
-    }
 
-    alert("Updated");
-    loadConfig();
+        trans_item.innerHTML = dropdown;
+        labour_cost.value = globalLabour;
+        document.getElementById('product-settings-list').innerHTML = table + "</table>";
+
+    } catch (err) {
+        console.error("Config load error:", err);
+        alert("Failed to load settings");
+    }
 }
 
+// ======================
+// SETTINGS UPDATE
+// ======================
+async function updateSettings() {
+    try {
+        const lab = parseFloat(labour_cost.value) || 0;
+
+        const updates = Object.values(currentConfig).map(item => ({
+            ...item,
+            labour_cost: lab
+        }));
+
+        const { error } = await _supabase.from('inventory_settings').upsert(updates);
+        if (error) throw error;
+
+        alert("Settings updated");
+        loadConfig();
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to update settings");
+    }
+}
+
+// ======================
+// PREVIEW
+// ======================
 function calcPreview() {
     const item = trans_item.value;
-    if (!currentConfig[item]) return;
+    const c = currentConfig[item];
+
+    if (!c) {
+        preview.innerHTML = "No config found";
+        return;
+    }
 
     const sold = parseFloat(qty_sold.value) || 0;
     const exp = parseFloat(daily_exp.value) || 0;
 
-    const config = currentConfig[item];
+    const sales = sold * c.selling_price;
+    const cost = (sold * c.buying_price) + exp + globalLabour;
 
-    const sales = sold * config.selling_price;
-    const cost = (sold * config.buying_price) + exp + globalLabour;
+    const profit = sales - cost;
 
-    preview.innerHTML = `Profit: KES ${(sales - cost).toFixed(2)}`;
+    preview.innerHTML = `
+        Sales: KES ${sales.toFixed(2)} <br>
+        Cost: KES ${cost.toFixed(2)} <br>
+        <strong>Profit: KES ${profit.toFixed(2)}</strong>
+    `;
 }
 
+// ======================
+// SAVE TRANSACTION
+// ======================
 async function saveTransaction() {
-    const record = {
-        product_name: trans_item.value,
-        qty_sold: parseInt(qty_sold.value) || 0,
-        qty_bought: parseInt(qty_bought.value) || 0,
-        expenses: parseFloat(daily_exp.value) || 0
-    };
+    try {
+        const editId = edit_id.value;
 
-    await _supabase.from('daily_records').insert([record]);
+        const record = {
+            product_name: trans_item.value,
+            qty_sold: parseInt(qty_sold.value) || 0,
+            qty_bought: parseInt(qty_bought.value) || 0,
+            expenses: parseFloat(daily_exp.value) || 0
+        };
 
-    alert("Saved");
-    loadHistory();
-    loadAnalytics();
-}
+        let res;
 
-async function loadHistory() {
-    const { data } = await _supabase.from('daily_records').select('*');
-
-    let html = "<table>";
-
-    data.forEach(r => {
-        html += `<tr>
-            <td>${r.product_name}</td>
-            <td>${r.qty_sold}</td>
-        </tr>`;
-    });
-
-    html += "</table>";
-    document.getElementById('history-table').innerHTML = html;
-}
-
-async function loadAnalytics() {
-    const { data } = await _supabase.from('daily_records').select('*');
-
-    let daily = {};
-
-    data.forEach(r => {
-        const d = new Date(r.created_at).toLocaleDateString();
-
-        if (!daily[d]) {
-            daily[d] = { sales: 0, buying: 0, exp: 0 };
+        if (editId) {
+            res = await _supabase.from('daily_records').update(record).eq('id', editId);
+        } else {
+            res = await _supabase.from('daily_records').insert([record]);
         }
 
-        const c = currentConfig[r.product_name];
+        if (res.error) throw res.error;
 
-        daily[d].sales += r.qty_sold * c.selling_price;
-        daily[d].buying += r.qty_bought * c.buying_price;
-        daily[d].exp += r.expenses;
-    });
+        resetForm();
+        loadHistory();
+        loadAnalytics();
 
-    let labels = [];
-    let values = [];
-
-    for (let d in daily) {
-        const profit = daily[d].sales - daily[d].buying - daily[d].exp - globalLabour;
-
-        labels.push(d);
-        values.push(profit);
+    } catch (err) {
+        console.error(err);
+        alert("Save failed");
     }
-
-    renderChart(labels, values);
-
-    const today = new Date().toLocaleDateString();
-    document.getElementById('day-total-display').innerText =
-        "KES " + (values[labels.indexOf(today)] || 0);
 }
 
-let chart;
+// ======================
+// HISTORY TABLE
+// ======================
+async function loadHistory() {
+    try {
+        const { data, error } = await _supabase
+            .from('daily_records')
+            .select('*')
+            .order('created_at', { ascending: false });
 
+        if (error) throw error;
+
+        let html = `
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Product</th>
+                    <th>Sold</th>
+                    <th>Actions</th>
+                </tr>
+        `;
+
+        data.forEach(r => {
+            html += `
+                <tr>
+                    <td>${new Date(r.created_at).toLocaleDateString()}</td>
+                    <td>${r.product_name}</td>
+                    <td>${r.qty_sold}</td>
+                    <td>
+                        <button class="secondary" onclick="editRecord('${r.id}','${r.product_name}',${r.qty_sold},${r.expenses},${r.qty_bought})">Edit</button>
+                        <button onclick="deleteRecord('${r.id}')">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += "</table>";
+        document.getElementById('history-table').innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to load history");
+    }
+}
+
+// ======================
+// EDIT
+// ======================
+function editRecord(id, name, sold, exp, bought) {
+    showTab('transactions');
+    edit_id.value = id;
+    trans_item.value = name;
+    qty_sold.value = sold;
+    qty_bought.value = bought;
+    daily_exp.value = exp;
+}
+
+// ======================
+// DELETE
+// ======================
+async function deleteRecord(id) {
+    if (!confirm("Delete this record?")) return;
+
+    try {
+        const { error } = await _supabase.from('daily_records').delete().eq('id', id);
+        if (error) throw error;
+
+        loadHistory();
+        loadAnalytics();
+
+    } catch (err) {
+        console.error(err);
+        alert("Delete failed");
+    }
+}
+
+// ======================
+// RESET
+// ======================
+function resetForm() {
+    edit_id.value = "";
+    qty_sold.value = "";
+    qty_bought.value = "";
+    daily_exp.value = "";
+    preview.innerHTML = "";
+}
+
+// ======================
+// ANALYTICS (FIXED + SORTED)
+// ======================
+async function loadAnalytics() {
+    try {
+        const { data, error } = await _supabase
+            .from('daily_records')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        let daily = {};
+
+        data.forEach(r => {
+            const date = new Date(r.created_at).toLocaleDateString();
+            const c = currentConfig[r.product_name];
+
+            if (!c) return;
+
+            if (!daily[date]) {
+                daily[date] = { sales: 0, buying: 0, exp: 0 };
+            }
+
+            daily[date].sales += r.qty_sold * c.selling_price;
+            daily[date].buying += r.qty_bought * c.buying_price;
+            daily[date].exp += r.expenses || 0;
+        });
+
+        let labels = Object.keys(daily);
+        let values = labels.map(d => {
+            const v = daily[d];
+            return v.sales - v.buying - v.exp - globalLabour;
+        });
+
+        renderChart(labels, values);
+
+        const today = new Date().toLocaleDateString();
+        const todayIndex = labels.indexOf(today);
+
+        document.getElementById('day-total-display').innerText =
+            "KES " + (todayIndex !== -1 ? values[todayIndex].toFixed(2) : "0");
+
+    } catch (err) {
+        console.error(err);
+        alert("Analytics failed");
+    }
+}
+
+// ======================
+// CHART
+// ======================
 function renderChart(labels, values) {
     const ctx = document.getElementById('profitChart');
 
@@ -248,12 +572,26 @@ function renderChart(labels, values) {
         data: {
             labels,
             datasets: [{
-                data: values
+                label: 'Daily Profit',
+                data: values,
+                borderColor: '#27ae60',
+                backgroundColor: 'rgba(39,174,96,0.2)',
+                tension: 0.3,
+                fill: true
             }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true }
+            }
         }
     });
 }
 
+// ======================
+// INIT
+// ======================
 window.onload = async () => {
     await loadConfig();
     loadHistory();
